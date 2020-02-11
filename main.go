@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -57,6 +59,9 @@ func (d *Downloader) downloadStream(url string) io.ReadCloser {
 func (d *Downloader) download(url string) string {
 	r := d.downloadStream(url)
 	data, _ := ioutil.ReadAll(r)
+	// if debug {
+	// 	log.Printf("%s\n%s", url, string(data))
+	// }
 	return string(data)
 }
 
@@ -84,13 +89,18 @@ func processScorm(body string) Scorm {
 	return scorm
 }
 
+func findBaseUrl(content string) string {
+	re := regexp.MustCompile(`https?://.*?pluginfile.*?.html`)
+	s := re.FindString(content)
+	u, _ := url.Parse(s)
+	u.Path = path.Dir(u.Path)
+	return u.String()
+}
+
 func (d *Downloader) downloadAudio(scorm Scorm) *bytes.Reader {
 	url := fmt.Sprintf(`https://learn.webwocnurse.com/mod/scorm/loadSCO.php?a=%s&scoid=%s&currentorg=&mode=&attempt=1`, scorm.Scorm, scorm.Sco)
 
-	re := regexp.MustCompile(`(https://.*?)/index_lms.html`)
-
-	u := re.FindStringSubmatch(d.download(url))
-	bdir := u[1]
+	bdir := findBaseUrl(d.download(url))
 
 	//fmt.Println(bdir)
 
